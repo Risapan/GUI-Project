@@ -1,60 +1,172 @@
-import { ref } from 'vue'
-import type { Product, ProductsResponse } from '../types'
+import { ref, computed, Ref } from 'vue';
+import type { Product, ProductsApiResponse, FetchProductsOptions, ApiError } from '../types/api';
 
-export function useProducts() {
-  const products = ref<Product[]>([])
-  const loading = ref(false)
-  const error = ref<string | null>(null)
+const API_BASE_URL = 'https://dummyjson.com/products';
 
-  const fetchProducts = async () => {
-    loading.value = true
-    error.value = null
-    try {
-      // Fetching up to 100 products to have a good set of data to filter
-      const response = await fetch('https://dummyjson.com/products?limit=100')
-      if (!response.ok) {
-        throw new Error(`Error fetching products: ${response.statusText}`)
-      }
-      const data: ProductsResponse = await response.json()
-      products.value = data.products
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        error.value = err.message
-      } else {
-        error.value = 'An unknown error occurred'
-      }
-    } finally {
-      loading.value = false
+interface UseProductsReturn {
+  products: Ref<Product[]>;
+  isLoading: Ref<boolean>;
+  error: Ref<ApiError | null>;
+  total: Ref<number>;
+  filteredProducts: Readonly<Ref<Product[]>>;
+  fetchProducts: (options?: FetchProductsOptions) => Promise<void>;
+  fetchByCategory: (category: string, limit?: number) => Promise<void>;
+  searchProducts: (query: string) => Promise<void>;
+  clearError: () => void;
+}
+
+export function useProducts(): UseProductsReturn {
+  const products = ref<Product[]>([]);
+  const isLoading = ref<boolean>(false);
+  const error = ref<ApiError | null>(null);
+  const total = ref<number>(0);
+  const allProducts = ref<Product[]>([]);
+  const searchQuery = ref<string>('');
+
+  const filteredProducts = computed(() => {
+    if (!searchQuery.value.trim()) {
+      return products.value;
     }
-  }
+    
+    const query = searchQuery.value.toLowerCase();
+    return products.value.filter((product: Product) =>
+      product.title.toLowerCase().includes(query) ||
+      product.description.toLowerCase().includes(query) ||
+      product.category.toLowerCase().includes(query)
+    );
+  });
 
-  const fetchProductById = async (id: number | string): Promise<Product | null> => {
-    loading.value = true
-    error.value = null
+  const fetchProducts = async (options?: FetchProductsOptions): Promise<void> => {
+    isLoading.value = true;
+    error.value = null;
+
     try {
-      const response = await fetch(`https://dummyjson.com/products/${id}`)
+      const params = new URLSearchParams();
+      
+      if (options?.limit) {
+        params.append('limit', options.limit.toString());
+      }
+      if (options?.skip !== undefined) {
+        params.append('skip', options.skip.toString());
+      }
+
+      const url = options?.searchQuery
+        ? `${API_BASE_URL}/search?q=${encodeURIComponent(options.searchQuery)}&${params.toString()}`
+        : `${API_BASE_URL}?${params.toString()}`;
+
+      const response = await fetch(url);
+
       if (!response.ok) {
-        throw new Error(`Error fetching product: ${response.statusText}`)
+        throw new Error(`API error: ${response.statusText}`);
       }
-      const data: Product = await response.json()
-      return data
-    } catch (err: unknown) {
-       if (err instanceof Error) {
-        error.value = err.message
-      } else {
-        error.value = 'An unknown error occurred'
-      }
-      return null
+
+      const data: ProductsApiResponse = await response.json();
+      products.value = data.products;
+      allProducts.value = data.products;
+      total.value = data.total;
+      searchQuery.value = '';
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch products';
+      error.value = {
+        message: errorMessage,
+        status: err instanceof Error && 'status' in err ? (err as any).status : undefined,
+        timestamp: Date.now(),
+      };
+      products.value = [];
     } finally {
-      loading.value = false
+      isLoading.value = false;
     }
-  }
+  };
+
+  const fetchByCategory = async (category: string, limit?: number): Promise<void> => {
+    if (!category.trim()) {
+      await fetchProducts({ limit });
+      return;
+    }
+
+    isLoading.value = true;
+    error.value = null;
+
+    try {
+      const params = new URLSearchParams();
+      if (limit) {
+        params.append('limit', limit.toString());
+      }
+
+      const url = `${API_BASE_URL}/category/${encodeURIComponent(category)}?${params.toString()}`;
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(`Category fetch failed: ${response.statusText}`);
+      }
+
+      const data: ProductsApiResponse = await response.json();
+      products.value = data.products;
+      allProducts.value = data.products;
+      total.value = data.total;
+      searchQuery.value = '';
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch category products';
+      error.value = {
+        message: errorMessage,
+        status: err instanceof Error && 'status' in err ? (err as any).status : undefined,
+        timestamp: Date.now(),
+      };
+      products.value = allProducts.value;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  const searchProducts = async (query: string): Promise<void> => {
+    searchQuery.value = query;
+
+    if (!query.trim()) {
+      products.value = allProducts.value;
+      total.value = allProducts.value.length;
+      isLoading.value = false;
+      searchQuery.value = '';
+      return;
+    }
+
+    isLoading.value = true;
+    error.value = null;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/search?q=${encodeURIComponent(query)}`);
+
+      if (!response.ok) {
+        throw new Error(`Search failed: ${response.statusText}`);
+      }
+
+      const data: ProductsApiResponse = await response.json();
+      products.value = data.products;
+      total.value = data.total;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Search failed';
+      error.value = {
+        message: errorMessage,
+        timestamp: Date.now(),
+      };
+      products.value = allProducts.value;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  const clearError = (): void => {
+    error.value = null;
+  };
 
   return {
     products,
-    loading,
+    isLoading,
     error,
+    total,
+    filteredProducts,
     fetchProducts,
-    fetchProductById
-  }
+    fetchByCategory,
+    searchProducts,
+    clearError,
+  };
 }

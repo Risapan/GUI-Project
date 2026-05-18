@@ -1,22 +1,27 @@
-export interface Review {
-  rating: number;
-  comment: string;
-  date: string;
-  reviewerName: string;
-  reviewerEmail: string;
-}
+/**
+ * DummyJSON Products API - Strictly Typed Interfaces
+ * No 'any' types - fully type-safe
+ */
 
-export interface Dimensions {
+export interface ProductDimensions {
   width: number;
   height: number;
   depth: number;
 }
 
-export interface Meta {
+export interface ProductMeta {
   createdAt: string;
   updatedAt: string;
   barcode: string;
   qrCode: string;
+}
+
+export interface ProductReview {
+  rating: number;
+  comment: string;
+  date: string;
+  reviewerName: string;
+  reviewerEmail: string;
 }
 
 export interface Product {
@@ -29,29 +34,35 @@ export interface Product {
   rating: number;
   stock: number;
   tags: string[];
-  brand?: string;
   sku: string;
   weight: number;
-  dimensions: Dimensions;
+  dimensions: ProductDimensions;
   warrantyInformation: string;
   shippingInformation: string;
   availabilityStatus: string;
-  reviews: Review[];
+  reviews: ProductReview[];
   returnPolicy: string;
   minimumOrderQuantity: number;
-  meta: Meta;
+  meta: ProductMeta;
   images: string[];
   thumbnail: string;
 }
 
-export interface ProductsResponse {
+export interface ProductsApiResponse {
   products: Product[];
   total: number;
   skip: number;
   limit: number;
 }
 
-export interface CartItem {
-  product: Product;
-  quantity: number;
+export interface FetchProductsOptions {
+  limit?: number;
+  skip?: number;
+  searchQuery?: string;
+}
+
+export interface ApiError {
+  message: string;
+  status?: number;
+  timestamp: number;
 }

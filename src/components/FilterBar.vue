@@ -1,87 +1,108 @@
-<script setup lang="ts">
-import { ref, computed } from 'vue'
-import { Search, SlidersHorizontal, X } from 'lucide-vue-next'
-
-const props = defineProps<{
-  categories: string[],
-  searchQuery: string,
-  selectedCategory: string
-}>()
-
-const emit = defineEmits<{
-  (e: 'update:searchQuery', value: string): void
-  (e: 'update:selectedCategory', value: string): void
-}>()
-
-const localSearchQuery = computed({
-  get: () => props.searchQuery,
-  set: (val) => emit('update:searchQuery', val)
-})
-
-const isFilterOpen = ref(false)
-
-const selectCategory = (category: string) => {
-  emit('update:selectedCategory', category === props.selectedCategory ? '' : category)
-}
-</script>
-
 <template>
-  <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 mb-8">
-    <div class="flex flex-col md:flex-row gap-4 items-center">
-      
-      <!-- Search Input -->
-      <div class="relative w-full md:flex-1">
-        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <Search class="h-5 w-5 text-slate-400" />
+  <div class="w-full bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div class="flex flex-col sm:flex-row gap-4 items-center justify-between">
+        <!-- Search Input -->
+        <div class="w-full sm:flex-1">
+          <div class="relative">
+            <input
+              v-model="searchInput"
+              @input="handleSearchInput"
+              type="text"
+              placeholder="Search products by name, description, or category..."
+              class="w-full px-4 py-2 pl-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-colors duration-200"
+            />
+            <svg
+              class="absolute left-3 top-2.5 h-5 w-5 text-gray-400 dark:text-gray-500"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </div>
         </div>
-        <input 
-          v-model="localSearchQuery"
-          type="text" 
-          placeholder="Search products by title, description..." 
-          class="block w-full pl-10 pr-10 py-3 border border-slate-300 dark:border-slate-600 rounded-xl leading-5 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors duration-200"
-        />
-        <button 
-          v-if="localSearchQuery"
-          @click="localSearchQuery = ''"
-          class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+
+        <!-- Clear Button -->
+        <button
+          v-if="searchInput.trim()"
+          @click="clearSearch"
+          class="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-lg font-medium transition-colors duration-200 whitespace-nowrap"
         >
-          <X class="h-5 w-5" />
+          Clear Search
         </button>
+
+        <!-- Category Filter (Optional Enhancement) -->
+        <select
+          v-model="selectedCategory"
+          @change="handleCategoryChange"
+          class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-200"
+        >
+          <option value="">All Categories</option>
+          <option value="smartphones">Smartphones</option>
+          <option value="laptops">Laptops</option>
+          <option value="fragrances">Fragrances</option>
+          <option value="skin-care">Skin Care</option>
+          <option value="groceries">Groceries</option>
+          <option value="home-decoration">Home Decoration</option>
+          <option value="furniture">Furniture</option>
+          <option value="tops">Tops</option>
+        </select>
       </div>
 
-      <!-- Filter Toggle -->
-      <button 
-        @click="isFilterOpen = !isFilterOpen"
-        class="flex items-center gap-2 px-5 py-3 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-xl text-slate-700 dark:text-slate-200 font-medium transition-colors duration-200 w-full md:w-auto justify-center"
-      >
-        <SlidersHorizontal class="w-5 h-5" />
-        <span>Categories</span>
-      </button>
-    </div>
-
-    <!-- Categories Expansion -->
-    <div 
-      v-show="isFilterOpen"
-      class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700 transition-all duration-300"
-    >
-      <div class="flex flex-wrap gap-2">
-        <button
-          @click="selectCategory('')"
-          class="px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
-          :class="!selectedCategory ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'"
-        >
-          All Products
-        </button>
-        <button
-          v-for="category in categories" 
-          :key="category"
-          @click="selectCategory(category)"
-          class="px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 capitalize"
-          :class="selectedCategory === category ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'"
-        >
-          {{ category }}
-        </button>
+      <!-- Search Info -->
+      <div v-if="searchInput.trim() || selectedCategory" class="mt-3 text-sm text-gray-600 dark:text-gray-400">
+        Searching for: <span class="font-semibold text-gray-900 dark:text-white">{{ getSearchLabel }}</span>
       </div>
     </div>
   </div>
 </template>
+
+<script setup lang="ts">
+import { ref, computed } from 'vue';
+
+const searchInput = ref<string>('');
+const selectedCategory = ref<string>('');
+const searchTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
+
+const emit = defineEmits<{
+  search: [query: string];
+  'category-change': [category: string];
+}>();
+
+const getSearchLabel = computed(() => {
+  const parts: string[] = [];
+  if (searchInput.value.trim()) {
+    parts.push(`"${searchInput.value}"`);
+  }
+  if (selectedCategory.value) {
+    parts.push(`category: ${selectedCategory.value}`);
+  }
+  return parts.join(' + ');
+});
+
+const handleSearchInput = (): void => {
+  if (searchTimeout.value) {
+    clearTimeout(searchTimeout.value);
+  }
+
+  searchTimeout.value = setTimeout(() => {
+    emit('search', searchInput.value.trim());
+  }, 300);
+};
+
+const handleCategoryChange = (): void => {
+  emit('category-change', selectedCategory.value);
+};
+
+const clearSearch = (): void => {
+  searchInput.value = '';
+  selectedCategory.value = '';
+  emit('search', '');
+  emit('category-change', '');
+};
+</script>
